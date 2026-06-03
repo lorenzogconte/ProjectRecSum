@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SmartBite — A pantry-first recipe recommender that helps reduce food waste by suggesting meals based on ingredients you already have at home. Aligned with SDG 12.3.">
+  <title>SmartBite — Pantry-First Recipe Recommender</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥗</text></svg>">
+</head>
+<body>
+
+  <!-- Onboarding Overlay (shown on first visit) -->
+  <div id="onboarding-overlay" class="onboarding-overlay" role="dialog" aria-label="Setup your profile">
+    <div class="onboarding" id="onboarding-container"></div>
+  </div>
+
+  <!-- Main Application -->
+  <div id="app">
+
+    <!-- Header -->
+    <header class="app-header" id="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">🥗</span>
+          <div>
+            SmartBite
+            <span class="logo-tagline">Reduce waste. Eat great.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center" id="waste-gauge-container">
+        <!-- Waste-to-Taste gauge rendered here -->
+      </div>
+
+      <div class="header-right">
+        <button class="btn btn--secondary btn--sm" id="btn-profile" aria-label="Open profile settings">
+          ⚙️ Profile
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Pantry Sidebar -->
+      <aside class="pantry-panel" id="pantry-panel">
+        <!-- Pantry component rendered here -->
+      </aside>
+
+      <!-- Recipe Area -->
+      <section class="recipe-area" id="recipe-area">
+
+        <!-- Community Favorites (horizontal scroll) -->
+        <div class="community-section" id="community-section">
+          <!-- Community favorites rendered here -->
+        </div>
+
+        <!-- Filters Bar -->
+        <div id="filters-bar-container">
+          <!-- Filters rendered here -->
+        </div>
+
+        <!-- Recipe Grid -->
+        <div class="recipe-grid" id="recipe-grid">
+          <!-- Recipe cards rendered here -->
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Recipe Detail Modal -->
+  <div class="modal-overlay" id="recipe-modal-overlay" role="dialog" aria-label="Recipe details">
+    <div class="modal" id="recipe-modal">
+      <!-- Modal content rendered here -->
+    </div>
+  </div>
+
+  <!-- Profile Drawer -->
+  <div class="profile-overlay" id="profile-overlay"></div>
+  <aside class="profile-drawer" id="profile-drawer" role="complementary" aria-label="User profile">
+    <!-- Profile content rendered here -->
+  </aside>
+
+  <!-- Application Scripts (ES Modules) -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

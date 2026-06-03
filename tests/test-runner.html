@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartBite Test Runner</title>
+  <style>
+    body { font-family: 'Segoe UI', monospace; background: #1a1a2e; color: #eee; padding: 20px; }
+    h1 { color: #00d2ff; }
+    .suite { margin: 16px 0; padding: 12px; background: #16213e; border-radius: 8px; }
+    .suite-title { font-size: 1.1em; font-weight: bold; color: #e94560; margin-bottom: 8px; }
+    .test { padding: 4px 12px; margin: 2px 0; border-radius: 4px; }
+    .pass { color: #0f0; }
+    .fail { color: #f44; background: #2a1a1a; }
+    .summary { margin-top: 20px; padding: 16px; font-size: 1.2em; border-radius: 8px; }
+    .summary.all-pass { background: #1a3a1a; color: #0f0; }
+    .summary.has-fail { background: #3a1a1a; color: #f44; }
+    .error-detail { font-size: 0.85em; color: #f88; margin-left: 24px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 SmartBite Test Runner</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <script type="module">
+    // ─── Simple Assertion Library ───
+    class AssertionError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = 'AssertionError';
+      }
+    }
+
+    const assert = {
+      equal(actual, expected, msg = '') {
+        if (actual !== expected) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
+          );
+        }
+      },
+      deepEqual(actual, expected, msg = '') {
+        const a = JSON.stringify(actual);
+        const b = JSON.stringify(expected);
+        if (a !== b) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected ${b}, got ${a}`
+          );
+        }
+      },
+      true(value, msg = '') {
+        if (value !== true) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected true, got ${JSON.stringify(value)}`
+          );
+        }
+      },
+      false(value, msg = '') {
+        if (value !== false) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected false, got ${JSON.stringify(value)}`
+          );
+        }
+      },
+      throws(fn, msg = '') {
+        let threw = false;
+        try { fn(); } catch (e) { threw = true; }
+        if (!threw) {
+          throw new AssertionError(`${msg ? msg + ': ' : ''}Expected function to throw`);
+        }
+      },
+      greaterThan(actual, expected, msg = '') {
+        if (!(actual > expected)) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected ${actual} > ${expected}`
+          );
+        }
+      },
+      lessThanOrEqual(actual, expected, msg = '') {
+        if (!(actual <= expected)) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected ${actual} <= ${expected}`
+          );
+        }
+      },
+      includes(arr, item, msg = '') {
+        if (!Array.isArray(arr) || !arr.includes(item)) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected array to include ${JSON.stringify(item)}`
+          );
+        }
+      },
+      notIncludes(arr, item, msg = '') {
+        if (Array.isArray(arr) && arr.includes(item)) {
+          throw new AssertionError(
+            `${msg ? msg + ': ' : ''}Expected array NOT to include ${JSON.stringify(item)}`
+          );
+        }
+      }
+    };
+
+    // ─── Test Suite Runner ───
+    const suites = [];
+    let currentSuite = null;
+
+    window.__test = {
+      describe(name, fn) {
+        currentSuite = { name, tests: [] };
+        suites.push(currentSuite);
+        fn();
+        currentSuite = null;
+      },
+      it(name, fn) {
+        if (!currentSuite) throw new Error('it() must be inside describe()');
+        currentSuite.tests.push({ name, fn });
+      },
+      assert
+    };
+
+    // ─── Import all test modules ───
+    const testModules = [
+      './dietary-filter.test.js',
+      './content-filter.test.js',
+      './collab-filter.test.js',
+      './diversity.test.js',
+      './swaps.test.js',
+      './recommender.test.js'
+    ];
+
+    for (const mod of testModules) {
+      try {
+        await import(mod);
+      } catch (e) {
+        suites.push({
+          name: `⚠ Failed to load: ${mod}`,
+          tests: [{ name: 'Module load error', fn: () => { throw e; } }]
+        });
+      }
+    }
+
+    // ─── Run all tests ───
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    let totalPass = 0;
+    let totalFail = 0;
+
+    for (const suite of suites) {
+      const suiteDiv = document.createElement('div');
+      suiteDiv.className = 'suite';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'suite-title';
+      titleEl.textContent = `📦 ${suite.name}`;
+      suiteDiv.appendChild(titleEl);
+
+      for (const test of suite.tests) {
+        const testEl = document.createElement('div');
+        testEl.className = 'test';
+        try {
+          test.fn();
+          testEl.className += ' pass';
+          testEl.textContent = `  ✅ ${test.name}`;
+          totalPass++;
+        } catch (e) {
+          testEl.className += ' fail';
+          testEl.textContent = `  ❌ ${test.name}`;
+          totalFail++;
+          const detail = document.createElement('div');
+          detail.className = 'error-detail';
+          detail.textContent = `     → ${e.message}`;
+          testEl.appendChild(detail);
+        }
+        suiteDiv.appendChild(testEl);
+      }
+
+      resultsEl.appendChild(suiteDiv);
+    }
+
+    summaryEl.className = `summary ${totalFail > 0 ? 'has-fail' : 'all-pass'}`;
+    summaryEl.textContent = `Results: ${totalPass} passed, ${totalFail} failed, ${totalPass + totalFail} total`;
+
+    console.log(`\n=== SmartBite Tests: ${totalPass} passed, ${totalFail} failed ===\n`);
+  </script>
+</body>
+</html>
