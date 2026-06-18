@@ -453,7 +453,7 @@ body::after {
   border-radius: var(--radius-md);
   max-height: 240px;
   overflow-y: auto;
-  z-index: 50;
+  z-index: 1000;
   box-shadow: var(--shadow-lg);
   display: none;
 }
@@ -621,6 +621,30 @@ body::after {
   background: rgba(248, 113, 113, 0.25);
   color: var(--danger);
   text-decoration: line-through;
+}
+
+.pantry-panel {
+  overflow: visible;
+}
+
+.pantry-search-card {
+  position: relative;
+  z-index: 50;
+  overflow: visible;
+}
+
+.pantry-list-card {
+  position: relative;
+  z-index: 1;
+}
+
+#pantry-search-group {
+  position: relative;
+  z-index: 60;
+}
+
+.autocomplete-dropdown {
+  z-index: 9999;
 }
 
 @keyframes pulse-danger {
@@ -1809,4 +1833,234 @@ body::after {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   SAVED RECIPES IN PROFILE DRAWER
+   ============================================================ */
+
+.profile-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-base);
+}
+
+.profile-section__header .profile-section__title {
+  margin-bottom: 0;
+}
+
+.profile-section__count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 var(--space-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+
+.saved-recipes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.saved-recipe-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025)),
+    var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.saved-recipe-card:hover,
+.saved-recipe-card:focus-visible {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(255,255,255,0.035)),
+    var(--surface-hover);
+  border-color: rgba(52, 211, 153, 0.28);
+  box-shadow: var(--shadow-md), 0 0 18px rgba(52, 211, 153, 0.08);
+}
+
+.saved-recipe-card__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-recipe-card__emoji {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-border);
+  font-size: 1.45rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.saved-recipe-card__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-recipe-card__title {
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  font-weight: 750;
+  line-height: 1.25;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-recipe-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  line-height: 1.35;
+}
+
+.saved-recipe-card__dot {
+  color: var(--text-muted);
+}
+
+.saved-recipe-card__rating {
+  color: var(--text-primary);
+}
+
+.saved-recipe-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.saved-recipe-card__open,
+.saved-recipe-card__remove {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-family: var(--font-family);
+  font-size: var(--font-base);
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.saved-recipe-card__open {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+}
+
+.saved-recipe-card__open:hover,
+.saved-recipe-card__open:focus-visible {
+  transform: scale(1.07);
+  background: rgba(52, 211, 153, 0.22);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-glow-green);
+}
+
+.saved-recipe-card__remove {
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-muted);
+  border: 1px solid var(--surface-border);
+}
+
+.saved-recipe-card__remove:hover,
+.saved-recipe-card__remove:focus-visible {
+  transform: scale(1.07);
+  background: var(--danger-dim);
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.35);
+  box-shadow: var(--shadow-glow-red);
+}
+
+.saved-recipes-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(255,255,255,0.025);
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-lg);
+}
+
+.saved-recipes-empty__icon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--font-lg);
+}
+
+.saved-recipes-empty__title {
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.saved-recipes-empty__text {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+  .saved-recipe-card {
+    align-items: flex-start;
+  }
+
+  .saved-recipe-card__actions {
+    flex-direction: column;
+  }
+
+  .saved-recipe-card__open,
+  .saved-recipe-card__remove {
+    width: 32px;
+    height: 32px;
+  }
 }

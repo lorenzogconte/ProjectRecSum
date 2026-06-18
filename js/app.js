@@ -77,10 +77,20 @@ function initApp() {
     const state = store.getState();
     const { pantry, profile: userProfile, filters } = state;
 
+    // Attach a computed riskLevel to each pantry item so the engine can flag
+    // at-risk (expiring) ingredients. The content filter reads `riskLevel` to
+    // build `atRiskUsed`, which in turn drives the urgency bonus AND the
+    // savings bar. Risk is derived from the expiry date at run time so it
+    // always reflects the latest dates.
+    const pantryWithRisk = pantry.map((item) => ({
+      ...item,
+      riskLevel: calculateRiskLevel(calculateDaysUntilExpiry(item.expiryDate)),
+    }));
+
     // Run the recommendation engine
     currentRecommendations = getRecommendations(
       RECIPES,
-      pantry,
+      pantryWithRisk,
       userProfile,
       filters,
       COMMUNITY_USERS
@@ -92,8 +102,8 @@ function initApp() {
     // Update results count
     updateResultsCount(currentRecommendations.length);
 
-    // Update waste gauge
-    updateWasteGauge(dom.wasteGauge, pantry, currentRecommendations);
+    // Update the savings bar from cumulative rescued food (driven by cooking)
+    updateWasteGauge(dom.wasteGauge, userProfile);
 
     // Render community favorites section
     renderCommunityFavorites(dom.communitySection, currentRecommendations, store);
@@ -111,9 +121,27 @@ function initApp() {
 
     // Handle recipe detail modal
     if (newState.ui.showRecipeDetail && newState.ui.showRecipeDetail !== prevState.ui.showRecipeDetail) {
-      const rec = currentRecommendations.find(
+      let rec = currentRecommendations.find(
         (r) => r.recipe.id === newState.ui.showRecipeDetail
       );
+
+      // Fallback: the requested recipe (e.g. a saved one) may be filtered out of
+      // the current results. Score it on demand so the modal can still open.
+      if (!rec) {
+        const recipe = RECIPES.find((r) => r.id === newState.ui.showRecipeDetail);
+        if (recipe) {
+          const state = store.getState();
+          const pantryWithRisk = state.pantry.map((item) => ({
+            ...item,
+            riskLevel: calculateRiskLevel(calculateDaysUntilExpiry(item.expiryDate)),
+          }));
+          const scored = getRecommendations(
+            [recipe], pantryWithRisk, state.profile, {}, COMMUNITY_USERS
+          );
+          rec = scored[0];
+        }
+      }
+
       if (rec) {
         renderRecipeDetail(dom.modalOverlay, dom.recipeModal, rec, store);
       }
@@ -150,37 +178,19 @@ function showOnboarding(dom, store) {
 }
 
 /**
- * Updates the waste-to-taste gauge based on current pantry at-risk items
- * and which of those appear in the displayed recipes.
+ * Updates the savings bar.
+ *
+ * The bar reflects how much at-risk food the user has actually rescued from the
+ * bin by cooking (cumulative), which is tracked on the profile by the
+ * MARK_COOKED action. It is no longer tied to which recipes are merely on screen.
+ *
+ * @param {HTMLElement} container - The gauge container element.
+ * @param {object} profile - The user profile (provides rescuedCount / rescuedGrams).
  */
-function updateWasteGauge(container, pantry, recommendations) {
-  // Find all at-risk pantry items (high or medium risk)
-  const atRiskItems = pantry.filter((item) => {
-    const days = calculateDaysUntilExpiry(item.expiryDate);
-    const risk = calculateRiskLevel(days);
-    return risk === 'high' || risk === 'medium';
-  });
-
-  // Collect all at-risk ingredient names used across all displayed recipes
-  const coveredAtRiskNames = new Set();
-  recommendations.forEach((rec) => {
-    rec.matchDetails.atRiskUsed.forEach((name) => {
-      coveredAtRiskNames.add(name);
-    });
-  });
-
-  // Count how many distinct at-risk pantry items are covered
-  const atRiskPantryNames = new Set(atRiskItems.map((item) => item.name.toLowerCase()));
-  let covered = 0;
-  atRiskPantryNames.forEach((name) => {
-    if (coveredAtRiskNames.has(name)) {
-      covered++;
-    }
-  });
-
+function updateWasteGauge(container, profile) {
   renderWasteGauge(container, {
-    atRiskTotal: atRiskPantryNames.size,
-    atRiskCovered: covered,
+    rescuedCount: profile.rescuedCount || 0,
+    rescuedGrams: profile.rescuedGrams || 0,
   });
 }
 

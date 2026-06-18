@@ -9,7 +9,7 @@
 import { calculateDaysUntilExpiry, calculateRiskLevel, estimateExpiryDate } from '../utils/helpers.js';
 import { INGREDIENTS } from '../data/ingredients.js';
 
-/** Category icons for visual distinction */
+/** Category icons — used as a fallback when an ingredient has no specific emoji. */
 const CATEGORY_ICONS = {
   produce: '🥬',
   dairy: '🧀',
@@ -19,6 +19,50 @@ const CATEGORY_ICONS = {
   condiment: '🫙',
   other: '📦',
 };
+
+/** Per-ingredient emojis, keyed by canonical ingredient id. */
+const INGREDIENT_EMOJI = {
+  // Produce
+  'ing-tomato': '🍅', 'ing-onion': '🧅', 'ing-garlic': '🧄', 'ing-bell-pepper': '🫑',
+  'ing-spinach': '🥬', 'ing-broccoli': '🥦', 'ing-carrot': '🥕', 'ing-potato': '🥔',
+  'ing-lemon': '🍋', 'ing-lime': '🍋', 'ing-avocado': '🥑', 'ing-cilantro': '🌿',
+  'ing-basil': '🌿', 'ing-ginger': '🫚', 'ing-mushroom': '🍄', 'ing-zucchini': '🥒',
+  'ing-corn': '🌽', 'ing-lettuce': '🥬', 'ing-banana': '🍌', 'ing-jalapeño': '🌶️',
+  // Dairy
+  'ing-milk': '🥛', 'ing-butter': '🧈', 'ing-cheese': '🧀', 'ing-parmesan': '🧀',
+  'ing-cream': '🥛', 'ing-yogurt': '🥣', 'ing-greek-yogurt': '🥣', 'ing-mozzarella': '🧀',
+  'ing-sour-cream': '🥣', 'ing-cream-cheese': '🧀', 'ing-feta': '🧀', 'ing-eggs': '🥚',
+  // Protein
+  'ing-chicken': '🍗', 'ing-ground-beef': '🥩', 'ing-beef': '🥩', 'ing-salmon': '🐟',
+  'ing-shrimp': '🦐', 'ing-tofu': '🧊', 'ing-tempeh': '🧆', 'ing-chickpeas': '🫘',
+  'ing-lentils': '🫘', 'ing-black-beans': '🫘', 'ing-bacon': '🥓', 'ing-ground-turkey': '🦃',
+  'ing-tuna': '🐟', 'ing-peanuts': '🥜',
+  // Grains
+  'ing-pasta': '🍝', 'ing-rice': '🍚', 'ing-bread': '🍞', 'ing-flour': '🌾',
+  'ing-tortilla': '🫓', 'ing-corn-tortilla': '🫓', 'ing-rice-noodles': '🍜', 'ing-oats': '🥣',
+  'ing-couscous': '🌾', 'ing-panko': '🍞', 'ing-quinoa': '🌾', 'ing-pita': '🫓',
+  'ing-naan': '🫓', 'ing-pizza-dough': '🍕',
+  // Spices
+  'ing-salt': '🧂', 'ing-black-pepper': '🧂', 'ing-cumin': '🧂', 'ing-paprika': '🌶️',
+  'ing-chili-powder': '🌶️', 'ing-oregano': '🌿', 'ing-thyme': '🌿', 'ing-turmeric': '🟡',
+  'ing-cinnamon': '🧂', 'ing-garam-masala': '🧂', 'ing-curry-powder': '🧂',
+  'ing-red-pepper-flakes': '🌶️', 'ing-bay-leaf': '🌿', 'ing-coriander': '🧂',
+  'ing-nutmeg': '🧂', 'ing-vanilla': '🍶', 'ing-cocoa-powder': '🍫', 'ing-baking-powder': '🧂',
+  // Condiments
+  'ing-olive-oil': '🫒', 'ing-soy-sauce': '🍶', 'ing-sesame-oil': '🍶', 'ing-vinegar': '🍶',
+  'ing-honey': '🍯', 'ing-maple-syrup': '🍁', 'ing-tomato-paste': '🥫', 'ing-hot-sauce': '🌶️',
+  'ing-mustard': '🫙', 'ing-ketchup': '🥫', 'ing-peanut-butter': '🥜', 'ing-tahini': '🥫',
+  'ing-fish-sauce': '🍶', 'ing-coconut-milk': '🥥', 'ing-coconut-cream': '🥥',
+  'ing-vegetable-broth': '🍲',
+  // Other
+  'ing-sugar': '🍬', 'ing-brown-sugar': '🍬', 'ing-chocolate-chips': '🍫',
+  'ing-walnuts': '🌰', 'ing-almonds': '🌰', 'ing-oat-milk': '🥛',
+};
+
+/** Resolves the best emoji for an ingredient: specific first, then category, then box. */
+function emojiFor(ingredientId, category) {
+  return INGREDIENT_EMOJI[ingredientId] || CATEGORY_ICONS[category] || '📦';
+}
 
 /**
  * Renders the pantry panel into the container.
@@ -32,7 +76,7 @@ export function renderPantry(container, store) {
     const { pantry } = store.getState();
 
     container.innerHTML = `
-      <div class="glass-card glass-card--elevated">
+      <div class="glass-card glass-card--elevated pantry-search-card">
         <div class="pantry-header">
           <h2 class="glass-card__title">📦 My Pantry</h2>
           <span class="pantry-count">${pantry.length} items</span>
@@ -55,7 +99,7 @@ export function renderPantry(container, store) {
       </div>
 
       <!-- Pantry items list -->
-      <div class="glass-card glass-card--elevated" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="glass-card glass-card--elevated pantry-list-card" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
         <h3 class="glass-card__title" style="font-size: var(--font-sm);">Ingredients</h3>
         <div class="pantry-items-list" id="pantry-items-list">
           ${pantry.length === 0
@@ -81,7 +125,7 @@ export function renderPantry(container, store) {
   }
 
   function renderPantryItem(item) {
-    const icon = CATEGORY_ICONS[item.category] || '📦';
+    const icon = emojiFor(item.ingredientId, item.category);
     const days = calculateDaysUntilExpiry(item.expiryDate);
     const risk = calculateRiskLevel(days);
     const expiryText = formatExpiryText(days, risk);
@@ -91,15 +135,19 @@ export function renderPantry(container, store) {
       <div class="pantry-item" data-id="${item.id}">
         <span class="pantry-item__icon">${icon}</span>
         <div class="pantry-item__info">
-          <div class="pantry-item__name">${item.name}</div>
+          <div class="pantry-item__top">
+            <div class="pantry-item__name" title="${item.name}">${item.name}</div>
+            <button class="pantry-item__remove" data-id="${item.id}" title="Remove" aria-label="Remove ${item.name}">✕</button>
+          </div>
           <div class="pantry-item__expiry">
-            <span class="risk-badge risk-badge--${risk}">${expiryText}</span>
-            ${estimatedTag}
+            <span class="pantry-item__expiry-left">
+              <span class="risk-badge risk-badge--${risk}">${expiryText}</span>
+              ${estimatedTag}
+            </span>
+            <input type="date" class="pantry-item__date-input" value="${item.expiryDate || ''}"
+              data-id="${item.id}" title="Set expiry date" aria-label="Expiry date for ${item.name}">
           </div>
         </div>
-        <input type="date" class="pantry-item__date-input" value="${item.expiryDate || ''}"
-          data-id="${item.id}" title="Set expiry date" aria-label="Expiry date for ${item.name}">
-        <button class="pantry-item__remove" data-id="${item.id}" title="Remove" aria-label="Remove ${item.name}">✕</button>
       </div>
     `;
   }
@@ -147,7 +195,7 @@ export function renderPantry(container, store) {
         <div class="autocomplete-item ${i === autocompleteIndex ? 'is-active' : ''}"
           data-ingredient-id="${ing.id}" data-index="${i}">
           <div>
-            <span class="autocomplete-item__name">${CATEGORY_ICONS[ing.category] || '📦'} ${highlightMatch(ing.name, query)}</span>
+            <span class="autocomplete-item__name">${emojiFor(ing.id, ing.category)} ${highlightMatch(ing.name, query)}</span>
             <span class="autocomplete-item__category">${ing.category}</span>
           </div>
           <span class="autocomplete-item__add">+ Quick Add</span>
@@ -275,41 +323,57 @@ export function renderPantry(container, store) {
 }
 
 /**
- * Loads a pre-populated demo pantry with ~10 items, some near expiry.
+ * Loads a pre-populated demo pantry with a mix of urgencies.
  * This ensures the app is immediately usable on first load.
+ *
+ * IMPORTANT: each entry references a *canonical* ingredient id from the
+ * INGREDIENTS master DB. Name and category are pulled from that record so the
+ * pantry item's ingredientId always matches the ids used in recipes.js. Do NOT
+ * hand-write ids by slugifying display names (e.g. "Chicken Breast" is
+ * `ing-chicken`, NOT `ing-chicken-breast`; "Tomatoes" is `ing-tomato`, NOT
+ * `ing-tomatoes`) — a mismatch makes the item invisible to every recipe.
  */
 export function loadDemoPantry(store) {
   const today = new Date();
 
-  const demoItems = [
-    { ingredientId: 'ing-chicken-breast', name: 'Chicken Breast', category: 'protein', daysOffset: 1 },
-    { ingredientId: 'ing-tomatoes', name: 'Tomatoes', category: 'produce', daysOffset: 2 },
-    { ingredientId: 'ing-eggs', name: 'Eggs', category: 'protein', daysOffset: 3 },
-    { ingredientId: 'ing-onion', name: 'Onion', category: 'produce', daysOffset: 8 },
-    { ingredientId: 'ing-garlic', name: 'Garlic', category: 'produce', daysOffset: 14 },
-    { ingredientId: 'ing-pasta', name: 'Pasta', category: 'grain', daysOffset: 60 },
-    { ingredientId: 'ing-rice', name: 'Rice', category: 'grain', daysOffset: 90 },
-    { ingredientId: 'ing-milk', name: 'Milk', category: 'dairy', daysOffset: 2 },
-    { ingredientId: 'ing-bell-pepper', name: 'Bell Pepper', category: 'produce', daysOffset: 4 },
-    { ingredientId: 'ing-cheese', name: 'Cheese', category: 'dairy', daysOffset: 6 },
-    { ingredientId: 'ing-olive-oil', name: 'Olive Oil', category: 'condiment', daysOffset: 180 },
-    { ingredientId: 'ing-soy-sauce', name: 'Soy Sauce', category: 'condiment', daysOffset: 120 },
+  // Only the canonical id + how many days until expiry are specified here.
+  const demoSpec = [
+    { id: 'ing-chicken', daysOffset: 1 },     // high risk
+    { id: 'ing-tomato', daysOffset: 2 },      // high risk
+    { id: 'ing-eggs', daysOffset: 3 },        // high risk
+    { id: 'ing-milk', daysOffset: 2 },        // high risk
+    { id: 'ing-bell-pepper', daysOffset: 4 }, // medium risk
+    { id: 'ing-cheese', daysOffset: 6 },      // medium risk
+    { id: 'ing-onion', daysOffset: 8 },       // low risk
+    { id: 'ing-garlic', daysOffset: 14 },     // low risk
+    { id: 'ing-pasta', daysOffset: 60 },      // low risk
+    { id: 'ing-rice', daysOffset: 90 },       // low risk
+    { id: 'ing-olive-oil', daysOffset: 180 }, // low risk
+    { id: 'ing-soy-sauce', daysOffset: 120 }, // low risk
   ];
 
-  const pantryItems = demoItems.map((item) => {
-    const expiryDate = new Date(today);
-    expiryDate.setDate(expiryDate.getDate() + item.daysOffset);
+  const pantryItems = demoSpec
+    .map((spec) => {
+      const ingredient = INGREDIENTS.find((ing) => ing.id === spec.id);
+      if (!ingredient) {
+        console.warn(`Demo pantry: unknown ingredient id "${spec.id}" — skipped`);
+        return null;
+      }
 
-    return {
-      id: `pantry-demo-${item.ingredientId}`,
-      ingredientId: item.ingredientId,
-      name: item.name,
-      category: item.category,
-      addedDate: today.toISOString().split('T')[0],
-      expiryDate: expiryDate.toISOString().split('T')[0],
-      expirySource: 'user',
-    };
-  });
+      const expiryDate = new Date(today);
+      expiryDate.setDate(expiryDate.getDate() + spec.daysOffset);
+
+      return {
+        id: `pantry-demo-${ingredient.id}`,
+        ingredientId: ingredient.id,            // canonical — matches recipes
+        name: ingredient.name,                  // pulled from master DB
+        category: ingredient.category,          // pulled from master DB
+        addedDate: today.toISOString().split('T')[0],
+        expiryDate: expiryDate.toISOString().split('T')[0],
+        expirySource: 'user',
+      };
+    })
+    .filter(Boolean);
 
   store.dispatch({ type: 'SET_PANTRY', payload: pantryItems });
 }

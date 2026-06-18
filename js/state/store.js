@@ -28,6 +28,14 @@ const DEFAULT_PROFILE = {
   savedRecipes: [],
   cookedRecipes: [],
   ratings: {},
+
+  // --- Food-waste savings (drives the savings bar) ---
+  // Lifetime count of at-risk pantry items actually rescued by cooking.
+  rescuedCount: 0,
+  // Approximate lifetime grams rescued (parsed from weight/volume amounts only).
+  rescuedGrams: 0,
+  // Per-cook history, useful for debugging / future stats.
+  wasteLog: [],
 };
 
 /** Default application state */
@@ -162,14 +170,40 @@ function reduce(state, action) {
       };
 
     case 'MARK_COOKED': {
-      const { recipeId, usedIngredientIds } = action.payload;
+      const {
+        recipeId,
+        usedIngredientIds,
+        atRiskIngredientIds = [],
+        gramsByIngredientId = {},
+      } = action.payload;
+
+      // A rescue only counts if the at-risk item is actually still in the pantry
+      // at cook time. This prevents double-counting when the same expiring item
+      // appears in two recipes and was already used by an earlier cook.
+      const pantryIngredientIds = new Set(state.pantry.map((item) => item.ingredientId));
+      const rescuedIds = atRiskIngredientIds.filter((id) => pantryIngredientIds.has(id));
+
+      const rescuedCount = rescuedIds.length;
+      const rescuedGrams = rescuedIds.reduce(
+        (sum, id) => sum + (gramsByIngredientId[id] || 0),
+        0
+      );
+
+      const alreadyCooked = state.profile.cookedRecipes.includes(recipeId);
+
       return {
         ...state,
         profile: {
           ...state.profile,
-          cookedRecipes: state.profile.cookedRecipes.includes(recipeId)
+          cookedRecipes: alreadyCooked
             ? state.profile.cookedRecipes
             : [...state.profile.cookedRecipes, recipeId],
+          rescuedCount: (state.profile.rescuedCount || 0) + rescuedCount,
+          rescuedGrams: (state.profile.rescuedGrams || 0) + rescuedGrams,
+          wasteLog: [
+            ...(state.profile.wasteLog || []),
+            { recipeId, count: rescuedCount, grams: rescuedGrams, at: Date.now() },
+          ],
         },
         // Remove used ingredients from pantry
         pantry: state.pantry.filter(
@@ -282,6 +316,8 @@ function mergeState(defaults, saved) {
 
   return {
     pantry: saved.pantry || defaults.pantry,
+    // Spreading defaults first guarantees new fields (rescuedCount, rescuedGrams,
+    // wasteLog) exist even for users who saved state before this update.
     profile: { ...defaults.profile, ...saved.profile },
     filters: { ...defaults.filters, ...saved.filters },
     ui: { ...defaults.ui }, // UI state always resets on page load

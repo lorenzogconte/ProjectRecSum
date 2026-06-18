@@ -224,24 +224,71 @@ function bindModalEvents(overlay, modal, recipe, matchDetails, store) {
     }
   });
 
-  // Mark as cooked — removes used ingredients from pantry
+  // Mark as cooked — removes used ingredients from pantry AND records the rescue.
   const cookedBtn = modal.querySelector('#modal-cooked');
   cookedBtn.addEventListener('click', () => {
-    const usedIngredientIds = matchDetails.matched.map((name) => {
-      // Find the ingredientId from the recipe ingredient by name
-      const recIng = recipe.ingredients.find((ri) => ri.name === name);
-      return recIng ? recIng.ingredientId : null;
-    }).filter(Boolean);
+    // matchDetails entries may be ingredient names or ingredientIds depending on
+    // the engine, so resolve each token to the recipe's ingredient either way.
+    const findIngredient = (token) =>
+      recipe.ingredients.find(
+        (ri) =>
+          ri.ingredientId === token ||
+          (typeof token === 'string' &&
+            ri.name.toLowerCase() === token.toLowerCase())
+      );
+
+    // All matched (in-pantry) ingredients get consumed and removed.
+    const usedIngredientIds = (matchDetails.matched || [])
+      .map((token) => findIngredient(token))
+      .filter(Boolean)
+      .map((recIng) => recIng.ingredientId);
+
+    // The "at-risk" subset is what we actually rescued from the bin. We report
+    // their ids + estimated grams so the store can grow the savings bar.
+    const atRiskIngredientIds = [];
+    const gramsByIngredientId = {};
+    (matchDetails.atRiskUsed || []).forEach((token) => {
+      const recIng = findIngredient(token);
+      if (!recIng) return;
+      atRiskIngredientIds.push(recIng.ingredientId);
+      gramsByIngredientId[recIng.ingredientId] = parseAmountToGrams(recIng.amount);
+    });
 
     store.dispatch({
       type: 'MARK_COOKED',
-      payload: { recipeId: recipe.id, usedIngredientIds },
+      payload: { recipeId: recipe.id, usedIngredientIds, atRiskIngredientIds, gramsByIngredientId },
     });
 
     // Close modal after marking as cooked
     overlay.classList.remove('is-open');
     store.dispatch({ type: 'HIDE_RECIPE_DETAIL' });
   });
+}
+
+/**
+ * Best-effort conversion of a recipe ingredient amount string to grams.
+ * Only weight/volume amounts (g, kg, ml, l) can be converted; counts like
+ * "3 cloves", "2 slices", "handful", or "to taste" return 0 (they still count
+ * as a rescued item, just not toward the grams estimate). Volume is treated as
+ * ~1 g/ml, which is a reasonable approximation for the watery/dairy items that
+ * tend to go off first.
+ *
+ * @param {string} amount
+ * @returns {number} grams (0 if not weight/volume based)
+ */
+function parseAmountToGrams(amount) {
+  if (!amount || typeof amount !== 'string') return 0;
+  const match = amount.match(/([\d.]+)\s*(kg|g|ml|l)\b/i);
+  if (!match) return 0;
+  const value = parseFloat(match[1]);
+  if (Number.isNaN(value)) return 0;
+  switch (match[2].toLowerCase()) {
+    case 'kg': return value * 1000;
+    case 'l': return value * 1000;
+    case 'ml': return value;
+    case 'g':
+    default: return value;
+  }
 }
 
 function capitalize(str) {

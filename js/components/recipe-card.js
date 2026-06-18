@@ -76,6 +76,11 @@ function renderCard({ recipe, score, explanation, matchDetails }, index) {
   const emoji = CUISINE_EMOJI[recipe.cuisine] || '🍽️';
   const atRiskCount = matchDetails.atRiskUsed.length;
 
+  // matchDetails.missing holds ingredient IDs (e.g. "ing-tomato"). Map them to
+  // human-readable names using the recipe's own ingredient list for display.
+  const nameById = new Map(recipe.ingredients.map((ri) => [ri.ingredientId, ri.name]));
+  const missingNames = matchDetails.missing.map((id) => capitalize(nameById.get(id) || id));
+
   // SVG circle math for match ring
   const radius = 19;
   const circumference = 2 * Math.PI * radius;
@@ -116,8 +121,8 @@ function renderCard({ recipe, score, explanation, matchDetails }, index) {
               ${matchDetails.matched.length}/${recipe.ingredients.length} ingredients matched
             </div>
             <div class="recipe-card__match-detail">
-              ${matchDetails.missing.length > 0
-                ? `Missing: ${matchDetails.missing.slice(0, 2).join(', ')}${matchDetails.missing.length > 2 ? '...' : ''}`
+              ${missingNames.length > 0
+                ? `Missing: ${missingNames.slice(0, 2).join(', ')}${missingNames.length > 2 ? '…' : ''}`
                 : '✨ You have everything!'}
             </div>
           </div>
@@ -157,5 +162,6 @@ function getMatchColor(percent) {
 }
 
 function capitalize(str) {
+  if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
