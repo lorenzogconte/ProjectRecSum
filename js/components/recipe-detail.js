@@ -152,26 +152,24 @@ export function renderRecipeDetail(overlay, modal, recommendation, store) {
 }
 
 function renderIngredient(ing, matchedSet, atRiskSet, missingSet, swapMap) {
-  const id = ing.ingredientId;
   const name = ing.name;
-
   let statusClass = '';
   let statusIcon = '';
 
-  if (atRiskSet.has(id)) {
+  if (atRiskSet.has(name)) {
     statusClass = 'modal__ingredient--at-risk';
     statusIcon = '⚠️';
-  } else if (matchedSet.has(id)) {
+  } else if (matchedSet.has(name)) {
     statusClass = 'modal__ingredient--in-pantry';
     statusIcon = '✅';
-  } else if (missingSet.has(id)) {
+  } else if (missingSet.has(name)) {
     statusClass = 'modal__ingredient--missing';
     statusIcon = '❌';
   }
 
   // Swap suggestion for missing items
   let swapHtml = '';
-  if (missingSet.has(id) && swapMap[name] && swapMap[name].length > 0) {
+  if (missingSet.has(name) && swapMap[name] && swapMap[name].length > 0) {
     const swapTexts = swapMap[name].map((s) => {
       const inPantry = s.inPantry ? ' <strong>(in your pantry!)</strong>' : '';
       return `${s.name}${inPantry}`;
@@ -229,17 +227,22 @@ function bindModalEvents(overlay, modal, recipe, matchDetails, store) {
   // Mark as cooked — removes used ingredients from pantry
   const cookedBtn = modal.querySelector('#modal-cooked');
   cookedBtn.addEventListener('click', () => {
-    const usedIngredientIds = matchDetails.matched;
+    const usedIngredientIds = matchDetails.matched.map((name) => {
+      // Find the ingredientId from the recipe ingredient by name
+      const recIng = recipe.ingredients.find((ri) => ri.name === name);
+      return recIng ? recIng.ingredientId : null;
+    }).filter(Boolean);
 
     store.dispatch({
       type: 'MARK_COOKED',
       payload: { recipeId: recipe.id, usedIngredientIds },
     });
 
+    // Close modal after marking as cooked
     overlay.classList.remove('is-open');
     store.dispatch({ type: 'HIDE_RECIPE_DETAIL' });
   });
-  }
+}
 
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);

@@ -15,12 +15,12 @@ import { findSwaps } from './swaps.js';
  * These weights determine relative importance of each scoring factor.
  */
 const WEIGHTS = {
-  ingredientMatch: 0.50,
+  ingredientMatch: 0.35,
   urgencyBonus: 0.25,
-  flavorScore: 0.08,
-  nutritionScore: 0.07,
-  similarUserScore: 0.07,
-  popularityScore: 0.03
+  flavorScore: 0.10,
+  nutritionScore: 0.10,
+  similarUserScore: 0.15,
+  popularityScore: 0.05
 };
 
 /**
@@ -72,8 +72,6 @@ function generateExplanation(contentScores, collabScores, recipe) {
 
   return parts.join(' — ');
 }
-
-
 
 /**
  * Get ranked recipe recommendations through the full pipeline.
@@ -134,13 +132,6 @@ export function getRecommendations(recipes, pantryItems, userProfile, filters = 
       score: finalScore,
       explanation,
       matchDetails: {
-        ingredientMatch: contentScores.ingredientMatch,
-        urgencyBonus: contentScores.urgencyBonus,
-        flavorScore: contentScores.flavorScore,
-        nutritionScore: contentScores.nutritionScore,
-        similarUserScore: collabScores.similarUserScore,
-        popularityScore: collabScores.popularityScore,
-
         matched: contentScores.matchedIngredients,
         missing: contentScores.missingIngredients,
         atRiskUsed: contentScores.atRiskUsed,
@@ -150,68 +141,22 @@ export function getRecommendations(recipes, pantryItems, userProfile, filters = 
   });
 
   // ─── Apply Active Filters ───
-  // Taste filter: temporary UI filter
-  // Matches recipe.flavorProfile OR recipe.tags
-  if (filters.taste && filters.taste.length > 0) {
-    scoredRecipes = scoredRecipes.filter(r => {
-      const recipeFlavors = r.recipe.flavorProfile || [];
-      const recipeTags = r.recipe.tags || [];
-
-      return filters.taste.some(taste =>
-        recipeFlavors.includes(taste) || recipeTags.includes(taste)
-      );
-    });
-  }
-
   // Time filter: exclude recipes exceeding maxTime
   if (filters.maxTime) {
     scoredRecipes = scoredRecipes.filter(r => r.recipe.prepTime <= filters.maxTime);
   }
 
-  // Sort
-  if (!filters.sortBy || filters.sortBy === 'best') {
+  // Sort: default by score descending, or by specified field
+  if (filters.sortBy === 'time') {
+    scoredRecipes.sort((a, b) => a.recipe.prepTime - b.recipe.prepTime);
+  } else if (filters.sortBy === 'rating') {
+    scoredRecipes.sort((a, b) => b.recipe.communityRating - a.recipe.communityRating);
+  } else {
     scoredRecipes.sort((a, b) => b.score - a.score);
-
-    // Optional: disable this while debugging if order looks strange
-    return applyDiversityReranking(scoredRecipes);
   }
 
-  if (filters.sortBy === 'expiring') {
-    scoredRecipes.sort((a, b) => {
-      const urgencyDiff = b.matchDetails.urgencyBonus - a.matchDetails.urgencyBonus;
-      if (urgencyDiff !== 0) return urgencyDiff;
-
-      return b.matchDetails.ingredientMatch - a.matchDetails.ingredientMatch;
-    });
-
-    return scoredRecipes;
-  }
-
-  if (filters.sortBy === 'quick') {
-    scoredRecipes.sort((a, b) => {
-      const timeDiff = a.recipe.prepTime - b.recipe.prepTime;
-      if (timeDiff !== 0) return timeDiff;
-
-      return b.score - a.score;
-    });
-
-    return scoredRecipes;
-  }
-
-  if (filters.sortBy === 'community') {
-    scoredRecipes.sort((a, b) => {
-      const ratingDiff = b.recipe.communityRating - a.recipe.communityRating;
-      if (ratingDiff !== 0) return ratingDiff;
-
-      return b.recipe.cookCount - a.recipe.cookCount;
-    });
-
-    return scoredRecipes;
-  }
-
-  // fallback
-  scoredRecipes.sort((a, b) => b.score - a.score);
-  return scoredRecipes;
+  // ─── Phase 3: Diversity Re-ranking ───
+  const diverseResults = applyDiversityReranking(scoredRecipes);
 
   return diverseResults;
 }
