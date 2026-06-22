@@ -75,6 +75,10 @@ function renderCard({ recipe, score, explanation, matchDetails }, index) {
   const gradientClass = GRADIENT_CLASSES[index % GRADIENT_CLASSES.length];
   const emoji = CUISINE_EMOJI[recipe.cuisine] || '🍽️';
   const atRiskCount = matchDetails.atRiskUsed.length;
+  const missingNames = matchDetails.missing.map((id) =>
+  getRecipeIngredientName(recipe, id)
+  );
+  
 
   // SVG circle math for match ring
   const radius = 19;
@@ -116,9 +120,9 @@ function renderCard({ recipe, score, explanation, matchDetails }, index) {
               ${matchDetails.matched.length}/${recipe.ingredients.length} ingredients matched
             </div>
             <div class="recipe-card__match-detail">
-              ${matchDetails.missing.length > 0
-                ? `Missing: ${matchDetails.missing.slice(0, 2).join(', ')}${matchDetails.missing.length > 2 ? '...' : ''}`
-                : '✨ You have everything!'}
+              ${missingNames.length > 0
+              ? `Missing: ${missingNames.slice(0, 2).join(', ')}${missingNames.length > 2 ? '...' : ''}`
+               : '✨ You have everything!'}
             </div>
           </div>
         </div>
@@ -158,4 +162,9 @@ function getMatchColor(percent) {
 
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function getRecipeIngredientName(recipe, ingredientId) {
+  const ingredient = recipe.ingredients.find((ing) => ing.ingredientId === ingredientId);
+  return ingredient ? ingredient.name : ingredientId;
 }
